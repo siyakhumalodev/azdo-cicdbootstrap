@@ -1,0 +1,31 @@
+# Local bootstrap/secret files
+.powershell/variables.ps1
+variables.ps1
+variables.*.ps1
+*.secrets.*
+.env
+.env.*
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.vs/
+*.swp
+*.swo
+*~
+
+# Build outputs
+bin/
+obj/
+out/
+dist/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+temp/
+tmp/

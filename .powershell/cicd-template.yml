@@ -1,0 +1,238 @@
+trigger:
+  branches:
+    include:
+      - __DefaultBranch__
+
+pr:
+  branches:
+    include:
+      - __DefaultBranch__
+
+pool:
+  vmImage: __VmImage__
+
+variables:
+  buildConfiguration: '__BuildConfiguration__'
+  dotNetFramework: '__DotNetFramework__'
+  dotNetVersion: '__DotNetVersion__'
+  serviceConnection: '__ServiceConnection__'
+  webAppNameDev: '__WebAppNameDev__'
+  apiAppNameDev: '__ApiAppNameDev__'
+  resourceGroupDev: '__ResourceGroupDev__'
+
+stages:
+- stage: Build
+  displayName: 'Build Stage'
+  jobs:
+  - job: Build
+    displayName: 'Build Job'
+    steps:
+    - task: UseDotNet@2
+      displayName: 'Use .NET SDK'
+      inputs:
+        packageType: 'sdk'
+        version: $(dotNetVersion)
+
+    - task: PowerShell@2
+      displayName: 'Debug: List directory structure'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "Branch: $(Build.SourceBranch)"
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Directory contents (first 50):"
+          Get-ChildItem -Recurse -Name | Select-Object -First 50
+          Write-Host "Listing *.csproj files:";
+          Get-ChildItem -Recurse -Filter "*.csproj" | ForEach-Object { Write-Host $_.FullName }
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Restore NuGet packages'
+      inputs:
+        command: 'restore'
+        projects: 'pulse360.sln'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Build solution'
+      inputs:
+        command: 'build'
+        projects: 'pulse360.sln'
+        arguments: '--configuration $(buildConfiguration) --no-restore'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Publish Web Frontend'
+      inputs:
+        command: 'publish'
+        publishWebProjects: false
+        projects: 'pulse360.Web/pulse360.Web.csproj'
+        arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/web-temp'
+        zipAfterPublish: false
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Publish API Service'
+      inputs:
+        command: 'publish'
+        publishWebProjects: false
+        projects: 'pulse360.ApiService/pulse360.ApiService.csproj'
+        arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/api-temp'
+        zipAfterPublish: false
+
+    - task: PowerShell@2
+      displayName: 'Prepare deployment folders'
+      inputs:
+        targetType: 'inline'
+        script: |
+          # Find the actual published content (dotnet publish creates a subdirectory with project name)
+          $webTempDir = "$(Build.ArtifactStagingDirectory)/web-temp"
+          $apiTempDir = "$(Build.ArtifactStagingDirectory)/api-temp"
+          
+          Write-Host "Contents of web-temp:"
+          Get-ChildItem $webTempDir | ForEach-Object { Write-Host $_.Name }
+          
+          Write-Host "`nContents of api-temp:"
+          Get-ChildItem $apiTempDir | ForEach-Object { Write-Host $_.Name }
+          
+          # Create clean output directories
+          $webOutputDir = "$(Build.ArtifactStagingDirectory)/web"
+          $apiOutputDir = "$(Build.ArtifactStagingDirectory)/api"
+          New-Item -Path $webOutputDir -ItemType Directory -Force | Out-Null
+          New-Item -Path $apiOutputDir -ItemType Directory -Force | Out-Null
+          
+          # Copy contents from the published output (flatten the structure)
+          # Check if there's a subdirectory with the project name
+          $webPublished = Get-ChildItem $webTempDir | Where-Object { $_.PSIsContainer -and $_.Name -like "pulse360.Web" } | Select-Object -First 1
+          if ($webPublished) {
+            Write-Host "Found web subdirectory: $($webPublished.Name), copying its contents"
+            Copy-Item -Path "$($webPublished.FullName)/*" -Destination $webOutputDir -Recurse -Force
+          } else {
+            Write-Host "No subdirectory found, copying all contents from web-temp"
+            Copy-Item -Path "$webTempDir/*" -Destination $webOutputDir -Recurse -Force
+          }
+          
+          $apiPublished = Get-ChildItem $apiTempDir | Where-Object { $_.PSIsContainer -and $_.Name -like "pulse360.ApiService" } | Select-Object -First 1
+          if ($apiPublished) {
+            Write-Host "Found API subdirectory: $($apiPublished.Name), copying its contents"
+            Copy-Item -Path "$($apiPublished.FullName)/*" -Destination $apiOutputDir -Recurse -Force
+          } else {
+            Write-Host "No subdirectory found, copying all contents from api-temp"
+            Copy-Item -Path "$apiTempDir/*" -Destination $apiOutputDir -Recurse -Force
+          }
+          
+          Write-Host "`nFinal web output contents (first 10):"
+          Get-ChildItem $webOutputDir | Select-Object -First 10 | ForEach-Object { Write-Host $_.Name }
+          
+          Write-Host "`nFinal API output contents (first 10):"
+          Get-ChildItem $apiOutputDir | Select-Object -First 10 | ForEach-Object { Write-Host $_.Name }
+
+    - task: PowerShell@2
+      displayName: 'Create deployment packages'
+      inputs:
+        targetType: 'inline'
+        script: |
+          # Create zip files from the prepared directories
+          Write-Host "Creating Web deployment package..."
+          Compress-Archive -Path "$(Build.ArtifactStagingDirectory)/web/*" -DestinationPath "$(Build.ArtifactStagingDirectory)/pulse360-web.zip" -Force
+          
+          Write-Host "Creating API deployment package..."
+          Compress-Archive -Path "$(Build.ArtifactStagingDirectory)/api/*" -DestinationPath "$(Build.ArtifactStagingDirectory)/pulse360-api.zip" -Force
+          
+          Write-Host "`nVerifying packages:"
+          Get-ChildItem "$(Build.ArtifactStagingDirectory)" -Filter "*.zip" | ForEach-Object {
+            Write-Host "$($_.Name): $([math]::Round($_.Length / 1MB, 2)) MB"
+          }
+
+    - task: PowerShell@2
+      displayName: 'Debug: Verify artifact contents'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "Final artifact staging directory contents:"
+          Get-ChildItem "$(Build.ArtifactStagingDirectory)" | ForEach-Object { 
+            Write-Host "$($_.Name) - $($_.Length) bytes" 
+          }
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Build Artifacts'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+
+- stage: Test
+  displayName: 'Test Stage'
+  dependsOn: Build
+  jobs:
+  - job: Test
+    displayName: 'Run Tests'
+    steps:
+    - task: UseDotNet@2
+      displayName: 'Use .NET SDK'
+      inputs:
+        packageType: 'sdk'
+        version: $(dotNetVersion)
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Run Unit Tests'
+      inputs:
+        command: 'test'
+        projects: 'pulse360.sln'
+        arguments: '--configuration $(buildConfiguration) --collect:"XPlat Code Coverage" --logger trx'
+        publishTestResults: true
+
+    - task: PublishCodeCoverageResults@2
+      displayName: 'Publish Code Coverage'
+      condition: succeededOrFailed()
+      inputs:
+        summaryFileLocation: '$(Agent.TempDirectory)/**/coverage.cobertura.xml'
+
+- stage: DeployToDev
+  displayName: 'Deploy to Development'
+  dependsOn: Test
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/__DefaultBranch__'))
+  jobs:
+  - deployment: DeployDev
+    displayName: 'Deploy to Dev Environment'
+    environment: '__EnvironmentName__'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: drop
+
+          - task: AzureWebApp@1
+            displayName: 'Deploy Web Frontend to Dev'
+            inputs:
+              azureSubscription: $(serviceConnection)
+              appType: 'webAppLinux'
+              appName: $(webAppNameDev)
+              resourceGroupName: $(resourceGroupDev)
+              package: '$(Pipeline.Workspace)/drop/pulse360-web.zip'
+              runtimeStack: 'DOTNETCORE|9.0'
+              appSettings: '-ASPNETCORE_ENVIRONMENT Development -apiUrl https://$(apiAppNameDev).azurewebsites.net'
+
+          - task: AzureWebApp@1
+            displayName: 'Deploy API Service to Dev'
+            inputs:
+              azureSubscription: $(serviceConnection)
+              appType: 'webAppLinux'
+              appName: $(apiAppNameDev)
+              resourceGroupName: $(resourceGroupDev)
+              package: '$(Pipeline.Workspace)/drop/pulse360-api.zip'
+              runtimeStack: 'DOTNETCORE|9.0'
+              appSettings: '-ASPNETCORE_ENVIRONMENT Development'
+              
+          - task: AzureAppServiceManage@0
+            displayName: 'Restart Dev Web App'
+            inputs:
+              azureSubscription: $(serviceConnection)
+              action: 'Restart Azure App Service'
+              webAppName: $(webAppNameDev)
+              resourceGroupName: $(resourceGroupDev)
+
+          - task: AzureAppServiceManage@0
+            displayName: 'Restart Dev API Service'
+            inputs:
+              azureSubscription: $(serviceConnection)
+              action: 'Restart Azure App Service'
+              webAppName: $(apiAppNameDev)
+              resourceGroupName: $(resourceGroupDev)
