@@ -8,18 +8,23 @@ A comprehensive PowerShell-based automation toolkit for bootstrapping Azure DevO
 
 ## 📋 Table of Contents
 
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Prerequisites](#prerequisites)
-- [Repository Contents](#repository-contents)
-- [Getting Started](#getting-started)
-- [Usage](#usage)
-- [Configuration](#configuration)
-- [Pipeline Workflow](#pipeline-workflow)
-- [Cleanup](#cleanup)
-- [Troubleshooting](#troubleshooting)
-- [Resources](#resources)
++- [📋 Table of Contents](#📋-table-of-contents)
+- [🎯 Overview](#🎯-overview)
+- [✨ Features](#✨-features)
+- [🏗️ Architecture](#🏗️-architecture)
+- [📦 Repository Contents](#📦-repository-contents)
+- [📋 Prerequisites](#📋-prerequisites)
+- [🚀 Getting Started](#🚀-getting-started)
+- [📖 Usage](#📖-usage)
+- [⚙️ Configuration](#️-configuration)
+- [🔄 Pipeline Workflow](#🔄-pipeline-workflow)
+- [🧹 Cleanup](#🧹-cleanup)
+- [🔧 Troubleshooting](#🔧-troubleshooting)
+- [📚 Resources](#📚-resources)
+- [🤝 Contributing](#🤝-contributing)
+- [📝 License](#📝-license)
+- [🎓 Learning Objectives](#🎓-learning-objectives)
+- [👤 Connect with Siya Khumalo](#👤-connect-with-siya-khumalo)
 
 ## 🎯 Overview
 
@@ -572,17 +577,6 @@ Contributions are welcome! Here's how you can help improve this project:
 - 🌟 Create templates for different application types
 - 🌟 Add infrastructure as code (Terraform/Bicep) templates
 
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-### MIT License Summary
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
 
 ## 🎓 Learning Objectives
 
@@ -599,6 +593,7 @@ This bootstrapper demonstrates:
 
 ---
 
+
 ## 👤 Connect with Siya Khumalo
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/siyakhumalo-ms/)
@@ -607,4 +602,20 @@ Feel free to connect with me on LinkedIn for discussions about DevOps, Azure, au
 
 ---
 
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### MIT License Summary
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
+
 **Made with ❤️ for DevOps automation enthusiasts**
+
+---
+
+*Special thanks to [GitHub Copilot](https://github.com/features/copilot) for its amazing assistance in building and documenting this project.*
