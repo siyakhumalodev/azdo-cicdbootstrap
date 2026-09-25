@@ -3,7 +3,7 @@ $env:AZDO_ORG_URL = "https://dev.azure.com/YOUR-ORG-NAME"
 #https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate
 $env:AZDO_PAT     = "YOUR-PERSONAL-ACCESS-TOKEN"
 
-# --- Local workspace directory for solution creation
+# --- New local workspace directory for solution creation (must not already exist)
 $LocalWorkspaceDir = "c:\path\to\your\workspace"
 
 # --- Central configuration used by the YAML template

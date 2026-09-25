@@ -1,621 +1,369 @@
-# Azure DevOps Project Bootstrapper
+# Azure DevOps CI/CD Bootstrapper
 
-![PowerShell](https://img.shields.io/badge/PowerShell-7.0%2B-blue)
-![Azure DevOps](https://img.shields.io/badge/Azure%20DevOps-CLI-0078D7)
-![.NET](https://img.shields.io/badge/.NET-9.0-512BD4)
-
-A comprehensive PowerShell-based automation toolkit for bootstrapping Azure DevOps projects with .NET solutions, CI/CD pipelines, and deployment workflows.
-
-## 📋 Table of Contents
-
-+- [📋 Table of Contents](#📋-table-of-contents)
-- [🎯 Overview](#🎯-overview)
-- [✨ Features](#✨-features)
-- [🏗️ Architecture](#🏗️-architecture)
-- [📦 Repository Contents](#📦-repository-contents)
-- [📋 Prerequisites](#📋-prerequisites)
-- [🚀 Getting Started](#🚀-getting-started)
-- [📖 Usage](#📖-usage)
-- [⚙️ Configuration](#️-configuration)
-- [🔄 Pipeline Workflow](#🔄-pipeline-workflow)
-- [🧹 Cleanup](#🧹-cleanup)
-- [🔧 Troubleshooting](#🔧-troubleshooting)
-- [📚 Resources](#📚-resources)
-- [🤝 Contributing](#🤝-contributing)
-- [📝 License](#📝-license)
-- [🎓 Learning Objectives](#🎓-learning-objectives)
-- [👤 Connect with Siya Khumalo](#👤-connect-with-siya-khumalo)
+A PowerShell automation tool that rapidly bootstraps Azure DevOps projects with a complete CI/CD pipeline for .NET applications. This tool eliminates manual setup overhead by automating project creation, repository initialization, and pipeline configuration.
 
 ## 🎯 Overview
 
-This project automates the complete setup of an Azure DevOps environment, including:
-- Creating Azure DevOps projects and repositories
-- Generating .NET solutions with Blazor and Web API projects
-- Configuring CI/CD pipelines with multi-stage deployments
-- Setting up Git repositories with proper branching strategies
-- Deploying applications to Azure App Services
+This bootstrapper automates the entire Azure DevOps project setup process, creating a production-ready CI/CD environment in minutes. It generates a .NET solution with both a Blazor web application and Web API, configures Azure Pipelines, and handles all necessary Azure DevOps resources.
 
-> **💡 Note:** While this bootstrapper is configured for .NET 9.0 with Blazor and Web API, it can be easily customized to support other frameworks and programming languages (Node.js, Python, Java, etc.) by modifying the project generation and pipeline template sections.
+### What It Does
 
-## ✨ Features
-
-- **🚀 Automated Project Creation**: Creates Azure DevOps projects, repositories, and pipelines automatically
-- **🔧 .NET Solution Scaffolding**: Generates complete .NET solutions with Blazor (frontend) and Web API (backend) projects
-- **📦 CI/CD Pipeline**: Multi-stage pipeline with Build → Test → Deploy workflow
-- **🔐 Secure Configuration**: Environment variable-based secrets management
-- **🌐 Azure Integration**: Deploy directly to Azure App Services with service connections
-- **🧹 Easy Cleanup**: Automated cleanup script to remove all created resources
-- **📝 Git Best Practices**: Automatic `.gitignore` configuration to exclude sensitive files
-
-## 🏗️ Architecture
-
-```mermaid
-graph TB
-    A["Configuration:<br/> variables-sample.ps1"] --> B["Bootstrap Script"]
-    B --> C["Azure DevOps Project"]
-    C --> D["Git Repository"]
-    D --> E[".NET Solution"]
-    E --> F["Blazor Web App"]
-    E --> G["Web API Service"]
-    D --> H["Azure Pipeline"]
-    H --> I["Build Stage"]
-    I --> J["Test Stage"]
-    J --> K["Deploy Stage"]
-    K --> L["Azure Web App: Frontend"]
-    K --> M["Azure Web App: API"]
-```
-
-## 📦 Repository Contents
-
-```
-azdo-project-bootstrapper/
-├── .powershell/
-│   ├── azdo-project-bootstrapper.ps1  # Main bootstrap script
-│   ├── cicd-template.yml              # Azure Pipeline YAML template
-│   ├── clean-up.ps1                   # Cleanup script
-│   ├── variables-sample.ps1           # Sample configuration file
-│   └── variables.ps1                  # Your configuration (gitignored)
-└── README.md                          # This file
-```
-
-### File Descriptions
-
-| File | Purpose |
-|------|---------|
-| `azdo-project-bootstrapper.ps1` | Main automation script that orchestrates the entire setup process |
-| `cicd-template.yml` | Azure Pipeline template with build, test, and deployment stages |
-| `clean-up.ps1` | Removes all created Azure DevOps resources and local workspace |
-| `variables-sample.ps1` | Template configuration file with all required settings |
-| `variables.ps1` | Your actual configuration (excluded from version control) |
+1. **Creates/Validates Azure DevOps Project** - Ensures your project exists and is properly configured
+2. **Sets Up Repository** - Initializes Git repository with proper .gitignore configuration
+3. **Generates .NET Solution** - Creates Blazor web app and Web API projects
+4. **Configures CI/CD Pipeline** - Sets up Azure Pipeline with YAML configuration
+5. **Pushes Initial Commit** - Commits and pushes all generated code
+6. **Triggers First Build** - Queues initial pipeline run
 
 ## 📋 Prerequisites
 
-Before using this bootstrapper, ensure you have:
+Before running the bootstrapper, ensure you have:
 
-1. **PowerShell 7.0+**
-   ```powershell
-   $PSVersionTable.PSVersion
-   ```
-
-2. **Azure CLI with DevOps Extension**
-   ```powershell
-   # Install Azure CLI
-   winget install Microsoft.AzureCLI
-   
-   # Install DevOps extension
-   az extension add --name azure-devops
-   ```
-
-3. **Git**
-   ```powershell
-   git --version
-   ```
-
-4. **.NET SDK 9.0+**
-   ```powershell
-   dotnet --version
-   ```
-
-5. **Azure DevOps Organization**
-   - Create at [dev.azure.com](https://dev.azure.com)
-
-6. **Azure DevOps Personal Access Token (PAT)**
-   - Required scopes: Project (Read, Write), Code (Read, Write, Manage), Build (Read, Execute)
-   - [Create PAT](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate)
-
-7. **Azure Subscription & Resources** (for deployment)
-   - Active Azure subscription required for App Service deployments
-   - **Assumption:** Azure resources (App Services, Resource Groups) are created beforehand
-   - You can automate resource creation using:
-     - [Azure Bicep](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/overview) (Infrastructure as Code)
-     - [Terraform](https://www.terraform.io/) (Multi-cloud IaC)
-     - Azure Portal or Azure CLI for manual creation
+- **PowerShell 5.1+** or **PowerShell Core 7+**
+- **Azure CLI** with Azure DevOps extension
+  ```powershell
+  az extension add --name azure-devops
+  ```
+- **.NET SDK** (version specified in your config)
+- **Git** installed and configured
+- **Azure DevOps Organization** with appropriate permissions
+- **Personal Access Token (PAT)** with the following scopes:
+  - Project and Team (Read, Write, Manage)
+  - Code (Read, Write)
+  - Build (Read, Execute)
+  - Service Connections (Read, Query, Manage)
+- **Repository permissions** allowing the PAT's identity to contribute code
 
 ## 🚀 Getting Started
 
 ### Step 1: Clone the Repository
 
-```powershell
-git clone <your-repository-url>
-cd azdo-project-bootstrapper
+```bash
+git clone https://github.com/siyakhumalodev/azdo-cicdbootstrap.git
+cd azdo-cicdbootstrap
 ```
 
-### Step 2: Configure Your Settings
+### Step 2: Configure Variables
+
+Copy the sample variables file and customize it:
 
 ```powershell
-# Copy the sample configuration
-Copy-Item .\.powershell\variables-sample.ps1 .\.powershell\variables.ps1
-
-# Edit with your settings
-notepad .\.powershell\variables.ps1
+cd .powershell
+Copy-Item variables-sample.ps1 variables.ps1
 ```
 
-### Step 3: Update Configuration Values
-
-Edit `.powershell\variables.ps1` with your specific values (this file is created from `variables-sample.ps1` and should not be committed to version control):
+Edit [`variables.ps1`](.powershell/variables.ps1) with your configuration:
 
 ```powershell
-# --- Azure DevOps org & auth
-$env:AZDO_ORG_URL = "https://dev.azure.com/YOUR-ORG-NAME"
-$env:AZDO_PAT     = "YOUR-PERSONAL-ACCESS-TOKEN"
-
-# --- Local workspace directory for solution creation
-$LocalWorkspaceDir = "c:\workspace\my-project"
-
-# --- Central configuration
 $Config = @{
-  ProjectName        = "MyAwesomeProject"
-  PipelineName       = "MyApp-CI-CD"
-  DefaultBranch      = "main"
-  VmImage            = "ubuntu-latest"
-  BuildConfiguration = "Release"
-  DotNetFramework    = "net9.0"
-  DotNetVersion      = "9.0.x"
-  ServiceConnection  = "azure-service-connection"
-  WebAppNameDev      = "myapp-web-dev"
-  ApiAppNameDev      = "myapp-api-dev"
-  ResourceGroupDev   = "rg-myapp-dev"
-  EnvironmentName    = "Development"
-  SolutionName       = "MyApp"
-  WebProjectName     = "MyApp.Web"
-  ApiProjectName     = "MyApp.ApiService"
+    # Azure DevOps Settings
+    ProjectName        = "MyDemoProject"
+    PipelineName       = "MyApp-CI-CD"
+    ServiceConnection  = "AzureServiceConnection"
+    DefaultBranch      = "main"
+
+    # .NET Project Settings
+    SolutionName       = "MyAppSolution"
+    WebProjectName     = "MyApp.Web"
+    ApiProjectName     = "MyApp.Api"
+    DotNetFramework    = "net8.0"
+    DotNetVersion      = "8.x"
+
+    # Azure Resources (Development)
+    ResourceGroupDev   = "rg-myapp-dev"
+    WebAppNameDev      = "webapp-myapp-dev"
+    ApiAppNameDev      = "api-myapp-dev"
+    EnvironmentName    = "Development"
+
+    # Pipeline Configuration
+    VmImage            = "ubuntu-latest"
+    BuildConfiguration = "Release"
 }
 ```
 
-### Step 4: Run the Bootstrap Script
+Set `$LocalWorkspaceDir` to a new path that does not already exist. The bootstrapper stops before changing Azure DevOps and prompts for another path when the configured directory already exists.
+
+### Step 3: Set Environment Variables
+
+Set your Azure DevOps credentials:
 
 ```powershell
-cd .powershell
+$env:AZDO_ORG_URL = "https://dev.azure.com/YourOrganization"
+$env:AZDO_PAT = "your-personal-access-token"
+```
+
+### Step 4: Run the Bootstrapper
+
+```powershell
 .\azdo-project-bootstrapper.ps1
 ```
 
-## 📖 Usage
-
-### Basic Usage
+Or specify parameters explicitly:
 
 ```powershell
-# Run with configuration from variables.ps1
-.\azdo-project-bootstrapper.ps1
-```
-
-### Advanced Usage with Parameters
-
-```powershell
-# Override specific values
 .\azdo-project-bootstrapper.ps1 `
-  -OrgUrl "https://dev.azure.com/myorg" `
-  -Pat "your-pat-token" `
-  -Project "MyProject" `
-  -Repo "MyRepo" `
-  -PipeName "MyPipeline"
+    -OrgUrl "https://dev.azure.com/YourOrg" `
+    -Pat "your-pat-token" `
+    -Project "MyProject" `
+    -Repo "MyRepo" `
+    -PipeName "MyPipeline"
 ```
 
-### What the Script Does
+## 📖 Usage Examples
 
-The bootstrap script executes 12 automated steps:
+### Example 1: Basic Setup
 
-1. ✅ **Configure Azure DevOps CLI** - Sets up authentication and defaults
-2. ✅ **Check/Create Project** - Ensures Azure DevOps project exists
-3. ✅ **Verify Repository** - Confirms default repository is available
-4. ✅ **Setup Local Workspace** - Creates working directory
-5. ✅ **Initialize Git** - Sets up local Git repository
-6. ✅ **Configure .gitignore** - Adds proper ignore patterns
-7. ✅ **Create README** - Generates initial documentation
-8. ✅ **Generate .NET Solution** - Creates Blazor and Web API projects
-9. ✅ **Create Pipeline YAML** - Generates customized CI/CD pipeline
-10. ✅ **Commit & Push** - Pushes code to Azure DevOps repository
-11. ✅ **Create Pipeline** - Registers pipeline in Azure DevOps
-12. ✅ **Queue Pipeline Run** - Triggers initial build
+Minimal configuration using defaults from [`variables.ps1`](.powershell/variables.ps1):
 
-### Service Connection Setup
+```powershell
+# Set credentials
+$env:AZDO_ORG_URL = "https://dev.azure.com/Contoso"
+$env:AZDO_PAT = "xyz123..."
 
-The script will pause and prompt you to create an Azure Service Connection:
-
-```
-IMPORTANT: Service Connection Required
-Expected Service Connection Name: your-service-connection-name
-
-To create the service connection:
-  1. Go to: https://dev.azure.com/yourorg/YourProject/_settings/adminservices
-  2. Click 'New service connection'
-  3. Select 'Azure Resource Manager'
-  4. Name it: your-service-connection-name
+# Run bootstrapper
+.\azdo-project-bootstrapper.ps1
 ```
 
-**Steps to Create Service Connection:**
+### Example 2: Custom Project Name
 
-1. Navigate to Project Settings → Service Connections
-2. Click **+ New service connection**
-3. Select **Azure Resource Manager**
-4. Choose **Service principal (automatic)**
-5. Select your subscription and resource group
-6. Enter the name from your configuration (specified in `variables.ps1`)
-7. Click **Save**
+Override the project name while using other defaults:
 
-## ⚙️ Configuration
+```powershell
+.\azdo-project-bootstrapper.ps1 -Project "CustomerPortal"
+```
 
-### Configuration Reference
+### Example 3: Complete Custom Configuration
+
+Provide all parameters explicitly:
+
+```powershell
+.\azdo-project-bootstrapper.ps1 `
+    -OrgUrl "https://dev.azure.com/Contoso" `
+    -Pat "abc123xyz..." `
+    -Project "ECommerceApp" `
+    -Repo "ecommerce-main" `
+    -PipeName "ECommerce-CI-CD-Pipeline"
+```
+
+### Example 4: Using Separate Repositories
+
+Different project and repository names:
+
+```powershell
+.\azdo-project-bootstrapper.ps1 `
+    -Project "EnterpriseApps" `
+    -Repo "inventory-service" `
+    -PipeName "Inventory-Pipeline"
+```
+
+## 🔄 Workflow Diagram
+
+```mermaid
+graph TD
+    A[Start] --> B[Load Configuration]
+    B --> C[Authenticate Azure DevOps CLI]
+    C --> D{Project Exists?}
+    D -->|No| E[Create Project]
+    D -->|Yes| F[Verify Project]
+    E --> G[Prompt for Service Connection]
+    F --> G
+    G --> H[User Creates Service Connection]
+    H --> I[Verify Service Connection]
+    I --> J[Verify Repository]
+    J --> K[Setup Local Workspace]
+    K --> L[Initialize Git Repository]
+    L --> M[Configure .gitignore]
+    M --> N[Create .NET Solution]
+    N --> O[Generate Blazor Web App]
+    O --> P[Generate Web API]
+    P --> Q[Create Pipeline YAML]
+    Q --> R[Commit Code]
+    R --> S[Push to Azure DevOps]
+    S --> T[Create/Verify Pipeline]
+    T --> U[Queue Pipeline Run]
+    U --> V[Complete]
+```
+
+## 📁 Repository Structure
+
+```
+azdo-project-bootstrapper/
+├── .gitignore                          # Git ignore rules
+├── LICENSE                             # Project license
+├── README.md                           # This file
+└── .powershell/
+    ├── azdo-project-bootstrapper.ps1  # Main bootstrapper script
+    ├── cicd-template.yml              # Azure Pipeline YAML template
+    ├── clean-up.ps1                   # Cleanup script for resources
+    ├── variables-sample.ps1           # Sample configuration file
+    └── variables.ps1                  # Your configuration (gitignored)
+```
+
+## 🔧 Configuration Reference
+
+### Required Configuration Parameters
 
 | Parameter | Description | Example |
 |-----------|-------------|---------|
-| `AZDO_ORG_URL` | Your Azure DevOps organization URL | `https://dev.azure.com/myorg` |
-| `AZDO_PAT` | Personal Access Token for authentication | `••••••••••••••••` |
-| `LocalWorkspaceDir` | Local directory for code generation | `c:\workspace\myapp` |
-| `ProjectName` | Azure DevOps project name | `MyAwesomeProject` |
-| `PipelineName` | CI/CD pipeline name | `MyApp-CI-CD` |
-| `DefaultBranch` | Main Git branch name | `main` or `develop` |
-| `VmImage` | Azure Pipeline agent image | `ubuntu-latest`, `windows-latest` |
-| `BuildConfiguration` | .NET build configuration | `Release`, `Debug` |
-| `DotNetFramework` | Target .NET framework | `net9.0`, `net8.0` |
-| `DotNetVersion` | .NET SDK version | `9.0.x`, `8.0.x` |
-| `ServiceConnection` | Azure service connection name | `azure-prod-connection` |
-| `WebAppNameDev` | Azure Web App name (frontend) | `myapp-web-dev` |
-| `ApiAppNameDev` | Azure Web App name (backend) | `myapp-api-dev` |
-| `ResourceGroupDev` | Azure resource group | `rg-myapp-dev` |
-| `EnvironmentName` | Azure DevOps environment | `Development`, `Staging` |
-| `SolutionName` | .NET solution name | `MyApp` |
-| `WebProjectName` | Blazor project name | `MyApp.Web` |
-| `ApiProjectName` | Web API project name | `MyApp.ApiService` |
+| `ProjectName` | Azure DevOps project name | `"MyProject"` |
+| `PipelineName` | Name for the CI/CD pipeline | `"MyApp-Pipeline"` |
+| `ServiceConnection` | Azure service connection name | `"AzureRM-Connection"` |
+| `SolutionName` | .NET solution name | `"MyAppSolution"` |
+| `WebProjectName` | Blazor web project name | `"MyApp.Web"` |
+| `ApiProjectName` | Web API project name | `"MyApp.Api"` |
 
-### Security Best Practices
+### Azure Resource Configuration
 
-**❌ Never commit these files:**
-- `variables.ps1` (contains secrets - create from `variables-sample.ps1`)
-- Any files matching `*.secrets.*`
-- `.env` files
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `ResourceGroupDev` | Azure resource group for dev | `"rg-myapp-dev"` |
+| `WebAppNameDev` | Web app name in Azure | `"webapp-myapp-dev"` |
+| `ApiAppNameDev` | API app name in Azure | `"api-myapp-dev"` |
 
-**✅ The `.gitignore` automatically excludes:**
-```gitignore
-variables.ps1
-variables.*.ps1
-*.secrets.*
-.env
-.env.*
+### Build Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `DotNetFramework` | Target framework | `"net8.0"` |
+| `DotNetVersion` | .NET SDK version | `"8.x"` |
+| `VmImage` | Azure Pipeline agent | `"ubuntu-latest"` |
+| `BuildConfiguration` | Build configuration | `"Release"` |
+
+## 🎬 Pipeline Template
+
+The bootstrapper uses [`cicd-template.yml`](.powershell/cicd-template.yml) which includes:
+
+- **Build Stage**: Compiles both web and API projects
+- **Test Stage**: Runs unit tests (if present)
+- **Deploy Stage**: Deploys to Azure App Service
+- **Multi-project Support**: Handles both Blazor and API projects
+
+### Pipeline Stages
+
+```yaml
+stages:
+  - Build
+    - Restore dependencies
+    - Build solution
+    - Run tests
+    - Publish artifacts
+
+  - Deploy (Development)
+    - Deploy Web App
+    - Deploy API
 ```
 
-**✅ What to commit:**
-- `variables-sample.ps1` (template without sensitive data)
-
-## 🔄 Pipeline Workflow
-
-The generated Azure Pipeline follows a multi-stage approach:
-
-```mermaid
-graph LR
-    A[Trigger: Push to main] --> B[Build Stage]
-    B --> C{Tests Pass?}
-    C -->|Yes| D[Test Stage]
-    C -->|No| E[Fail]
-    D --> F{On main branch?}
-    F -->|Yes| G[Deploy to Dev]
-    F -->|No| H[Skip Deploy]
-    G --> I[Deploy Web App]
-    G --> J[Deploy API]
-    I --> K[Restart Services]
-    J --> K
-    
-```
-
-### Stage 1: Build
-
-- Restores NuGet packages
-- Builds solution
-- Publishes both Web and API projects
-- Creates deployment artifacts
-- Publishes artifacts for deployment
-
-### Stage 2: Test
-
-- Runs unit tests
-- Collects code coverage
-- Publishes test results
-
-### Stage 3: Deploy to Development
-
-- Downloads build artifacts
-- Deploys Web Frontend to Azure App Service
-- Deploys API Service to Azure App Service
-- Restarts both services
-- Only runs on main branch
-
-### Pipeline Variables
-
-The pipeline uses these variables (configured in `cicd-template.yml`):
-
-| Variable | Source | Description |
-|----------|--------|-------------|
-| `buildConfiguration` | Config | Build configuration (Release/Debug) |
-| `dotNetVersion` | Config | .NET SDK version |
-| `serviceConnection` | Config | Azure service connection |
-| `webAppNameDev` | Config | Frontend app service name |
-| `apiAppNameDev` | Config | Backend app service name |
-| `resourceGroupDev` | Config | Target resource group |
-
-## 🧹 Cleanup
-
-To remove all created resources:
-
-```powershell
-cd .powershell
-.\clean-up.ps1
-```
-
-### What Gets Deleted
-
-- ❌ Azure DevOps project (including repositories and pipelines)
-- ❌ Local workspace directory
-- ✅ Azure resources remain (Web Apps, Resource Groups)
-
-### Safety Features
-
-The cleanup script includes:
-- **Confirmation prompt** - Type `DELETE` to confirm
-- **Verbose logging** - Shows exactly what's being removed
-- **Force flag** - Continue on errors with `-Force`
-- **Skip confirmation** - Use `-SkipConfirmation` for automation
-
-### Cleanup Examples
-
-```powershell
-# Standard cleanup with confirmation
-.\clean-up.ps1
-
-# Skip confirmation prompt
-.\clean-up.ps1 -SkipConfirmation
-
-# Continue even if errors occur
-.\clean-up.ps1 -Force
-
-# Combine flags
-.\clean-up.ps1 -SkipConfirmation -Force
-```
-
-## 🔧 Troubleshooting
+## 🛠️ Troubleshooting
 
 ### Common Issues
 
-#### Issue: "Azure DevOps CLI configuration failed"
+#### Authentication Fails
 
-**Solution:**
 ```powershell
-# Verify Azure CLI installation
-az --version
-
-# Install DevOps extension
-az extension add --name azure-devops
-
-# Update extension
-az extension update --name azure-devops
+# Test Azure CLI access without displaying the PAT
+az devops project list --org $env:AZDO_ORG_URL
 ```
 
-#### Issue: "Failed to push code to Azure DevOps"
+If Azure CLI succeeds but Git reports `Authentication failed`, create or update the PAT with **Code (Read & write)** scope and verify that its identity has the repository **Contribute** permission. Rotate any PAT that was used with an older bootstrapper version because that version stored the PAT in the generated repository's Git remote URL.
 
-**Solution:**
-1. Verify PAT has correct permissions (Code: Read, Write, Manage)
-2. Check if PAT has expired
-3. Ensure organization URL is correct
-4. Configure Git user identity:
+#### Service Connection Not Found
+The script will prompt you to create the service connection. Follow the on-screen instructions:
+1. Navigate to the provided URL
+2. Create an Azure Resource Manager service connection
+3. Name it exactly as specified in your configuration
+4. Type 'Y' or 'Done' to continue
+
+#### Git Push Fails
+
 ```powershell
+# Check git configuration
+git config --global user.name
+git config --global user.email
+
+# Confirm the remote URL does not contain embedded credentials
+git remote get-url origin
+
+# If not set:
 git config --global user.name "Your Name"
 git config --global user.email "your.email@example.com"
 ```
 
-#### Issue: "Service connection not found"
+#### Pipeline Creation Fails
+- Verify you have permissions in the Azure DevOps project
+- Ensure the YAML template file exists
+- Check that all placeholders in the template are replaced
 
-**Solution:**
-1. Create service connection manually in Azure DevOps
-2. Ensure name exactly matches `ServiceConnection` in your configuration (`variables.ps1`)
-3. Grant necessary permissions to the service principal
+### Debug Mode
 
-#### Issue: ".NET SDK not found"
+Run with verbose output:
 
-**Solution:**
-```powershell
-# Install .NET 9.0 SDK
-winget install Microsoft.DotNet.SDK.9
-
-# Verify installation
-dotnet --list-sdks
-```
-
-#### Issue: "Pipeline creation failed"
-
-**Solution:**
-1. Verify you have Build Administrator permissions
-2. Check project settings allow pipeline creation
-3. Ensure YAML file path is correct
-4. Review pipeline creation logs for specific errors
-
-### Debug Tips
-
-**Enable verbose output:**
 ```powershell
 $VerbosePreference = "Continue"
 .\azdo-project-bootstrapper.ps1
 ```
 
-**Check Azure CLI login:**
+## 🧹 Cleanup
+
+To remove all created resources, use the cleanup script:
+
 ```powershell
-az account show
-az devops project list
+.\clean-up.ps1
 ```
 
-**Validate PAT token:**
-```powershell
-$env:AZURE_DEVOPS_EXT_PAT = "your-pat"
-az devops project list --org "https://dev.azure.com/yourorg"
-```
+This will:
+- Delete the Azure DevOps project
+- Remove local workspace directories
+- Clean up temporary files
 
 ## 📚 Resources
 
-### **Azure DevOps Documentation**
-- [Azure DevOps Documentation (Overview)](https://learn.microsoft.com/en-us/azure/devops/?view=azure-devops)
-- [Azure Pipelines Documentation](https://learn.microsoft.com/en-us/azure/devops/pipelines/?view=azure-devops)
+### Official Documentation
+- [Azure DevOps CLI Reference](https://learn.microsoft.com/en-us/azure/devops/cli/?view=azure-devops)
+- [Azure Pipelines YAML Schema](https://learn.microsoft.com/en-us/azure/devops/pipelines/yaml-schema)
+- [.NET CLI Reference](https://learn.microsoft.com/en-us/dotnet/core/tools/)
 
----
+### Related Projects
+- [Azure DevOps REST API](https://learn.microsoft.com/en-us/rest/api/azure/devops)
+- [Blazor Documentation](https://learn.microsoft.com/en-us/aspnet/core/blazor)
+- [ASP.NET Core Web API](https://learn.microsoft.com/en-us/aspnet/core/web-api)
 
-### **Pipelines YAML Concepts**
-- [Get Started with YAML Pipelines](https://learn.microsoft.com/en-us/azure/devops/pipelines/get-started/pipelines-get-started?view=azure-devops)
-- [Azure Pipelines YAML Schema Reference](https://learn.microsoft.com/en-us/azure/devops/pipelines/yaml-schema/?view=azure-pipelines)
-- [Pipeline Resources (Triggers, Repos, Containers)](https://learn.microsoft.com/en-us/azure/devops/pipelines/process/resources?view=azure-devops)
-
----
-
-### **Multi-Stage Pipelines**
-- [Create Your First Pipeline (includes multi-stage concepts)](https://learn.microsoft.com/en-us/azure/devops/pipelines/create-first-pipeline?view=azure-devops)
-
----
-
-### **Service Connections**
-- [Service Connections in Azure Pipelines](https://learn.microsoft.com/en-us/azure/devops/pipelines/library/service-endpoints?view=azure-devops)
-- [Azure DevOps Service Connection Security Best Practices](https://microsoft.github.io/code-with-engineering-playbook/CI-CD/dev-sec-ops/azure-devops-service-connection-security/)
-
----
-
-### **Repository & Branch Policies**
-- [Branch Policies in Azure Repos](https://learn.microsoft.com/en-us/azure/devops/repos/git/branch-policies?view=azure-devops)
-- [Repository Settings and Permissions](https://learn.microsoft.com/en-us/azure/devops/repos/git/repository-settings?view=azure-devops)
-
----
-
-### **Azure DevOps CLI**
-- [Azure DevOps CLI – Getting Started](https://learn.microsoft.com/en-us/azure/devops/cli/?view=azure-devops)
-- [Azure DevOps CLI Command Reference](https://learn.microsoft.com/en-us/cli/azure/devops?view=azure-cli-latest)
-
----
-
-### **PowerShell**
-- [PowerShell 7+ Installation](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows)
-- [Hitchhiker's Guide to the PowerShell Module Pipeline](https://xainey.github.io/2017/powershell-module-pipeline/)
-- [Quickly Making High-Quality PowerShell Modules](https://www.pr0mpt.com/2025-04-22-quickly-making-high-quality-powershell-modules-using-sampler/)
-
----
-
-### **DevOps Governance & Best Practices**
-- [Azure Pipelines YAML Templates (Reusable Governance Patterns)](https://learn.microsoft.com/en-us/azure/devops/pipelines/process/templates?view=azure-devops)
-- [Azure Pipelines YAML Best Practices – Code With Engineering Playbook](https://microsoft.github.io/code-with-engineering-playbook/code-reviews/recipes/azure-pipelines-yaml/)
-
----
-
-### **Pipeline as Code / Environment Approvals / Reusable Templates**
-- [Azure Pipelines Templates Documentation](https://learn.microsoft.com/en-us/azure/devops/pipelines/process/templates?view=azure-devops)
-- [Engineering Playbook – YAML Pipelines](https://microsoft.github.io/code-with-engineering-playbook/code-reviews/recipes/azure-pipelines-yaml/)
-
----
-
-### **Authentication & Security**
-- [Personal Access Tokens](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate)
-
----
-
-### **.NET Development**
-- [.NET CLI Documentation](https://learn.microsoft.com/en-us/dotnet/core/tools/)
-- [Blazor Documentation](https://learn.microsoft.com/en-us/aspnet/core/blazor/)
-- [ASP.NET Core Web API](https://learn.microsoft.com/en-us/aspnet/core/web-api/)
-
----
-
-### **Azure Services**
-- [Azure App Service](https://learn.microsoft.com/en-us/azure/app-service/)
-- [Azure DevOps Environments](https://learn.microsoft.com/en-us/azure/devops/pipelines/process/environments)
-
----
-
-### **Tools & Extensions**
-- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/)
-- [Azure DevOps Extension for Azure CLI](https://github.com/Azure/azure-devops-cli-extension)
-- [Git for Windows](https://git-scm.com/download/win)
+### Tutorials
+- [Getting Started with Azure DevOps](https://learn.microsoft.com/en-us/azure/devops/get-started)
+- [Create Your First Pipeline](https://learn.microsoft.com/en-us/azure/devops/pipelines/create-first-pipeline)
 
 ## 🤝 Contributing
 
-Contributions are welcome! Here's how you can help improve this project:
+Contributions are welcome! Please:
 
-### How to Contribute
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-1. **Fork** the repository to your GitHub account
-2. **Create a feature branch** from `main`
-   ```powershell
-   git checkout -b feature/your-feature-name
-   ```
-3. **Make your changes** and commit with clear, descriptive messages
-4. **Submit a Pull Request** with:
-   - Clear description of changes
-   - Explanation of why the change is needed
-   - Any related issue numbers
-5. **Validate YAML** with Azure DevOps pipeline schema
-   - Test pipeline changes in a dev environment
-   - Ensure YAML syntax is valid
-5. **Include tests** for PowerShell scripts (Optional)
-   - Use Pester framework for PowerShell testing
-   - Ensure all tests pass before submitting
+## 📄 License
 
-### Contribution Ideas
+This project is licensed under the terms specified in the [LICENSE](LICENSE) file.
 
-- 🌟 Add support for additional .NET project templates
-- 🌟 Implement multi-environment deployment (Staging, Production)
-- 🌟 Add Docker containerization support
-- 🌟 Create templates for different application types
-- 🌟 Add infrastructure as code (Terraform/Bicep) templates
+## 🙋 Support
 
+For issues, questions, or contributions:
+- **Issues**: [GitHub Issues](https://github.com/siyakhumalodev/azdo-cicdbootstrap/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/siyakhumalodev/azdo-cicdbootstrap/discussions)
 
-## 🎓 Learning Objectives
+## ✨ Features
 
-This bootstrapper demonstrates:
-
-- ✅ Azure DevOps CLI automation
-- ✅ Git workflow automation
-- ✅ CI/CD pipeline configuration
-- ✅ Multi-stage deployment strategies
+- ✅ Automated project creation
+- ✅ Git repository initialization
 - ✅ .NET solution scaffolding
-- ✅ Infrastructure provisioning
-- ✅ Security best practices (secrets management)
-- ✅ PowerShell scripting patterns
+- ✅ CI/CD pipeline configuration
+- ✅ Service connection verification
+- ✅ Automatic first build trigger
+- ✅ Comprehensive error handling
+- ✅ Progress tracking with colored output
+- ✅ Support for multiple .NET versions
+- ✅ Customizable configuration
 
 ---
 
-
-## 👤 Connect with Siya Khumalo
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/siyakhumalo-ms/)
-
-Feel free to connect with me on LinkedIn for discussions about DevOps, Azure, automation, and software engineering!
-
----
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-### MIT License Summary
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
-
-**Made with ❤️ for DevOps automation enthusiasts**
-
----
-
-*Special thanks to [GitHub Copilot](https://github.com/features/copilot) for its amazing assistance in building and documenting this project.*
+**Made with ❤️ for rapid Azure DevOps project setup**
