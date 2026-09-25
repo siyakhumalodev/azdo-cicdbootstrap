@@ -43,6 +43,64 @@ foreach ($name in 'OrgUrl','Pat','Project','Repo','PipeName') {
   }
 }
 
+# Resolve a new local workspace before making any Azure DevOps changes.
+$work = if ($LocalWorkspaceDir) { $LocalWorkspaceDir } else { Join-Path $env:TEMP ("repo_" + [Guid]::NewGuid()) }
+while (Test-Path -LiteralPath $work) {
+  Write-Host "[WARNING] Local workspace already exists: $work" -ForegroundColor Yellow
+  $work = Read-Host "Enter a new local workspace directory"
+  if ([string]::IsNullOrWhiteSpace($work)) {
+    throw "A new local workspace directory is required."
+  }
+}
+
+
+<#
+.SYNOPSIS
+  Executes Terraform commands with specified parameters and handles backend configuration.
+
+.DESCRIPTION
+  This function serves as a wrapper for Terraform CLI operations. It constructs and executes Terraform commands
+  with proper backend configuration, including Azure storage account details for state management. The function
+  handles command execution, output capture, and error handling for Terraform operations.
+
+.PARAMETER TerraformCommand
+  The Terraform command to execute (e.g., 'init', 'plan', 'apply', 'destroy').
+
+.PARAMETER TerraformDir
+  The directory path where Terraform configuration files are located.
+
+.PARAMETER BackendStorageAccountName
+  The name of the Azure Storage Account used for Terraform state backend.
+
+.PARAMETER BackendContainerName
+  The name of the Azure Storage Container used for storing Terraform state files.
+
+.PARAMETER BackendKey
+  The blob name/key for the Terraform state file within the storage container.
+
+.PARAMETER BackendResourceGroupName
+  The name of the Azure Resource Group containing the backend storage account.
+
+.PARAMETER AdditionalArgs
+  Optional. Additional arguments to pass to the Terraform command.
+
+.EXAMPLE
+  Invoke-TerraformCommand -TerraformCommand "init" -TerraformDir "./terraform" `
+    -BackendStorageAccountName "mystorageacct" -BackendContainerName "tfstate" `
+    -BackendKey "prod.terraform.tfstate" -BackendResourceGroupName "rg-terraform"
+
+.EXAMPLE
+  Invoke-TerraformCommand -TerraformCommand "apply" -TerraformDir "./terraform" `
+    -BackendStorageAccountName "mystorageacct" -BackendContainerName "tfstate" `
+    -BackendKey "prod.terraform.tfstate" -BackendResourceGroupName "rg-terraform" `
+    -AdditionalArgs "-auto-approve"
+
+.NOTES
+  Author: [Author Name]
+  Date: [Date]
+  Version: 1.0
+  Requires: Terraform CLI to be installed and available in PATH
+#>
 # --- Auth for az devops
 Write-Host "[1/12] Configuring Azure DevOps CLI..." -ForegroundColor Yellow
 az devops configure --defaults organization=$OrgUrl
@@ -156,23 +214,19 @@ Write-Host ""
 
 # --- Local workspace
 Write-Host "[4/12] Setting up local workspace..." -ForegroundColor Yellow
-$work = if ($LocalWorkspaceDir) { $LocalWorkspaceDir } else { Join-Path $env:TEMP ("repo_" + [Guid]::NewGuid()) }
-if (-not (Test-Path $work)) {
-  Write-Host "  Creating directory: $work" -ForegroundColor Gray
-  New-Item -ItemType Directory -Path $work | Out-Null
-}
+Write-Host "  Creating directory: $work" -ForegroundColor Gray
+New-Item -ItemType Directory -Path $work | Out-Null
 Set-Location $work
 Write-Host "[OK] Working in: $work" -ForegroundColor Green
 Write-Host ""
 
-# Initialize git if not already a repo
+# Initialize the new Git repository
 Write-Host "[5/12] Initializing git repository..." -ForegroundColor Yellow
-if (-not (Test-Path ".git")) {
-  git init
-  Write-Host "[OK] Git repository initialized" -ForegroundColor Green
-} else {
-  Write-Host "[OK] Git repository already initialized" -ForegroundColor Green
+git init
+if ($LASTEXITCODE -ne 0) {
+  throw "Git repository initialization failed"
 }
+Write-Host "[OK] Git repository initialized" -ForegroundColor Green
 Write-Host ""
 
 # --- .gitignore setup
@@ -215,21 +269,33 @@ $apiProjectName = $Config.ApiProjectName
 # 1) Create the solution
 Write-Host "[8/12] Creating .NET solution and projects..." -ForegroundColor Yellow
 Write-Host "  Creating solution: $solutionName" -ForegroundColor Gray
-dotnet new sln -n $solutionName 2>$null
+dotnet new sln -n $solutionName --format sln
+if ($LASTEXITCODE -ne 0) {
+  throw "Solution creation failed"
+}
 
 # 2) Create a Blazor Unified project (web front-end)
 Write-Host "  Creating Blazor project: $webProjectName" -ForegroundColor Gray
-dotnet new blazor -n $webProjectName --framework $Config.DotNetFramework 2>$null
+dotnet new blazor -n $webProjectName --framework $Config.DotNetFramework
+if ($LASTEXITCODE -ne 0) {
+  throw "Blazor project creation failed"
+}
 
 # 3) Create a Web API project (API backend)
 Write-Host "  Creating Web API project: $apiProjectName" -ForegroundColor Gray
-dotnet new webapi -n $apiProjectName -f $Config.DotNetFramework 2>$null
+dotnet new webapi -n $apiProjectName -f $Config.DotNetFramework
+if ($LASTEXITCODE -ne 0) {
+  throw "Web API project creation failed"
+}
 
 # 4) Add both projects to the solution
 Write-Host "  Adding projects to solution..." -ForegroundColor Gray
 dotnet sln "$solutionName.sln" add `
   "$webProjectName\$webProjectName.csproj" `
-  "$apiProjectName\$apiProjectName.csproj" 2>$null
+  "$apiProjectName\$apiProjectName.csproj"
+if ($LASTEXITCODE -ne 0) {
+  throw "Adding projects to the solution failed"
+}
 
 Write-Host "[OK] .NET solution and projects created" -ForegroundColor Green
 Write-Host ""
@@ -275,42 +341,36 @@ $branch = $Config.DefaultBranch
 Write-Host "  Setting branch to '$branch'..." -ForegroundColor Gray
 git branch -M $branch 2>$null
 
-# Get username from global git config
-$gitUser = git config --global user.name
-if ([string]::IsNullOrWhiteSpace($gitUser)) {
-  Write-Host "  Warning: No git user.name configured globally. Using organization name as default." -ForegroundColor Yellow
-  $orgName = ($OrgUrl -replace 'https://dev.azure.com/', '').TrimEnd('/')
-  $gitUser = $orgName
-}
-
-# Replace spaces with dashes for URL compatibility
-$gitUser = $gitUser -replace '\s+', '-'
-
-Write-Host "  Git username: '$gitUser'" -ForegroundColor Cyan
-
-# Build the authenticated remote URL
+# Build a credential-free remote URL. Authentication is supplied only to the push command.
 $orgName = ($OrgUrl -replace 'https://dev.azure.com/', '').TrimEnd('/')
-$remoteWithPat = "https://${gitUser}:${Pat}@dev.azure.com/${orgName}/${Project}/_git/${Repo}"
+$remoteUrl = "https://dev.azure.com/${orgName}/${Project}/_git/${Repo}"
 
-# Show masked URL for debugging
-$maskedUrl = "https://${gitUser}:****@dev.azure.com/${orgName}/${Project}/_git/${Repo}"
-Write-Host "  Remote URL (masked): $maskedUrl" -ForegroundColor Cyan
+Write-Host "  Remote URL: $remoteUrl" -ForegroundColor Cyan
 
 # Remove existing origin if present
 git remote remove origin 2>$null
 
 Write-Host "  Adding remote origin..." -ForegroundColor Gray
-git remote add origin $remoteWithPat
+git remote add origin $remoteUrl
 if ($LASTEXITCODE -ne 0) {
   Write-Host "[ERROR] Failed to add remote origin" -ForegroundColor Red
   throw "Git remote add failed"
 }
 
 Write-Host "  Pushing to remote..." -ForegroundColor Gray
-git push -u origin $branch
-if ($LASTEXITCODE -ne 0) {
+$basicAuth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("ado:$Pat"))
+$previousGitPrompt = $env:GIT_TERMINAL_PROMPT
+try {
+  $env:GIT_TERMINAL_PROMPT = '0'
+  git -c "http.extraHeader=Authorization: Basic $basicAuth" push -u origin $branch
+  $pushExitCode = $LASTEXITCODE
+} finally {
+  $env:GIT_TERMINAL_PROMPT = $previousGitPrompt
+  $basicAuth = $null
+}
+if ($pushExitCode -ne 0) {
   Write-Host "[ERROR] Failed to push code to Azure DevOps" -ForegroundColor Red
-  throw "Git push failed"
+  throw "Git push failed. Verify that the PAT is valid, has Code (Read & write) scope, and can contribute to repository '$Repo'."
 }
 Write-Host "[OK] Code pushed to Azure DevOps" -ForegroundColor Green
 Write-Host ""
